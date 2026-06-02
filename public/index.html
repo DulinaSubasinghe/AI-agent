@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Agent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="scanlines" aria-hidden="true"></div>
+    <aside class="sidebar">
+      <button class="new-chat" id="newChatButton" type="button">
+        <span aria-hidden="true">+</span>
+        New Quest
+      </button>
+      <nav class="quest-log" aria-label="Quest log">
+        <span class="quest-label">Quest Log</span>
+        <div class="quest-item active">Main Chat</div>
+        <div class="quest-item">Debug Run</div>
+        <div class="quest-item">Build Mode</div>
+      </nav>
+      <div class="brand">
+        <div class="brand-mark">XP</div>
+        <div>
+          <strong>Groq Arcade</strong>
+          <span>Local party member</span>
+        </div>
+      </div>
+    </aside>
+
+    <main class="app">
+      <header class="topbar">
+        <div>
+          <h1>Groq Arcade</h1>
+          <p>Player 1 connected</p>
+        </div>
+        <div class="model-pill">llama-3.1-8b-instant</div>
+      </header>
+
+      <section class="messages" id="messages" aria-live="polite">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">AI</div>
+          <h2>Ready Player?</h2>
+          <p>Start a quest, debug a boss fight, draft code, or ask the agent for a power-up.</p>
+        </div>
+      </section>
+
+      <form class="composer" id="chatForm">
+        <textarea
+          id="messageInput"
+          rows="1"
+          placeholder="Type your next move..."
+          autocomplete="off"
+        ></textarea>
+        <button class="send-button" id="sendButton" type="submit" aria-label="Send message">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 4l7 7-1.4 1.4-4.6-4.6V20h-2V7.8l-4.6 4.6L5 11z" />
+          </svg>
+        </button>
+      </form>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
