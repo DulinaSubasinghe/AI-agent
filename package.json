@@ -1,7 +1,6 @@
 {
   "name": "ai-agent",
   "version": "1.0.0",
-  "main": "agent.js",
   "type": "module",
   "scripts": {
     "start": "node agent.js"
