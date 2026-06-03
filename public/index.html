@@ -140,10 +140,7 @@ button,input,textarea{font:inherit}
 <script>
 const STORAGE_KEY = "b2_chats_v1";
 const PROFILE_KEY = "b2_profile_v1";
-const API_BASE =
-  location.protocol === "http:" || location.protocol === "https:"
-    ? `${location.protocol}//${location.hostname}:3000`
-    : "http://127.0.0.1:3000";
+const API_BASE = "";
 let chats = [];
 let activeChatId = "";
 let profile = { username: "You" };
