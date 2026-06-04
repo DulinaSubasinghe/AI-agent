@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "D:/Ai-agent/ai-agent/ai-agent/api"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "AI Agent"
+	}
+}
