@@ -148,8 +148,10 @@ button,input,textarea{font:inherit}
 const STORAGE_KEY = "b2_chats_v1";
 const PROFILE_KEY = "b2_profile_v1";
 const DEVICE_ID_KEY = "b2_device_id_v1";
-const API_DEFAULT_HOST = "http://127.0.0.1:3000";
-const API_BASE = location.protocol === "file:" ? API_DEFAULT_HOST : "";
+const API_BASE =
+  location.protocol === "http:" || location.protocol === "https:"
+    ? `${location.protocol}//${location.hostname}:3000`
+    : "http://127.0.0.1:3000";
 let chats = [];
 let activeChatId = "";
 let profile = { username: "You" };
@@ -166,30 +168,6 @@ function getDeviceId(){
     localStorage.setItem(DEVICE_ID_KEY, stored);
   }
   return stored;
-}
-
-async function apiFetch(path, opts={}) {
-  const bases = API_BASE ? [API_BASE] : ["", API_DEFAULT_HOST];
-  for (const base of bases) {
-    try {
-      const url = base ? `${base}${path}` : path;
-      const res = await fetch(url, opts);
-      const contentType = res.headers.get("content-type") || "";
-      const isHtml = contentType.includes("text/html");
-      if (
-        base === "" &&
-        (res.status === 404 ||
-          (res.status >= 400 && isHtml) ||
-          (isHtml && path.startsWith("/api")))
-      ) {
-        continue;
-      }
-      return res;
-    } catch (err) {
-      if (base === API_DEFAULT_HOST) throw err;
-    }
-  }
-  throw new Error("Unable to reach the API server.");
 }
 
 function isNewDevice(){
@@ -215,8 +193,9 @@ async function loadState(){
     if(isNewDevice()){
       clearChatsForNewDevice();
     }
-    const res=await apiFetch("/api/state");
-    const data = await parseApiResponse(res);
+    const res=await fetch(`${API_BASE}/api/state`);
+    const data=await res.json();
+    if(!res.ok)throw new Error(data.error || "Could not load chats.");
     profile=data.profile || { username: "You" };
     chats=data.chats || [];
     if(!chats.length){
@@ -233,27 +212,13 @@ async function loadState(){
 }
 
 function saveChats(){}
-
-async function parseApiResponse(res) {
-  const raw = await res.text();
-  let data = {};
-  if (raw) {
-    try {
-      data = JSON.parse(raw);
-    } catch {
-      throw new Error(`Server returned invalid JSON: ${raw.slice(0,160)}`);
-    }
-  }
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-  return data;
-}
-
 function createChat(){return {id:uid(),title:"New chat",messages:[],createdAt:Date.now(),updatedAt:Date.now()};}
 
 async function newChat(render=true){
   try{
-    const res=await apiFetch("/api/chats",{method:"POST"});
-    const data=await parseApiResponse(res);
+    const res=await fetch(`${API_BASE}/api/chats`,{method:"POST"});
+    const data=await res.json();
+    if(!res.ok)throw new Error(data.error || "Could not create chat.");
     chats.unshift(data.chat);
     activeChatId=data.chat.id;
     if(render){
@@ -270,8 +235,9 @@ async function clearCurrentChat(){
   const chat = getActiveChat();
   if (!chat || !chat.messages.length) return;
   if (!confirm("Clear all messages in this chat? The chat will stay in Recent.")) return;
-  const res=await apiFetch(`/api/chats/${chat.id}/clear`,{method:"POST"});
-  await parseApiResponse(res);
+  const res=await fetch(`${API_BASE}/api/chats/${chat.id}/clear`,{method:"POST"});
+  const data=await res.json();
+  if(!res.ok){alert(data.error || "Could not clear chat.");return;}
   chat.messages = [];
   chat.title = "New chat";
   chat.updated_at = new Date().toISOString();
@@ -283,8 +249,9 @@ async function deleteCurrentChat(){
   const chat = getActiveChat();
   if (!chat) return;
   if (!confirm(`Delete "${chat.title}"? This removes the chat from Recent.`)) return;
-  const res=await apiFetch(`/api/chats/${chat.id}/delete`,{method:"DELETE"});
-  await parseApiResponse(res);
+  const res=await fetch(`${API_BASE}/api/chats/${chat.id}/delete`,{method:"DELETE"});
+  const data=await res.json();
+  if(!res.ok){alert(data.error || "Could not delete chat.");return;}
   chats = chats.filter(item => item.id !== activeChatId);
   if (!chats.length){ await newChat(false); }
   activeChatId = chats[0].id;
@@ -382,7 +349,7 @@ async function send(){
   showTyping();
 
   try{
-    const res=await apiFetch(`/api/chat`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chatId:chat.id,content:txt})});
+    const res=await fetch(`${API_BASE}/api/chat`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chatId:chat.id,content:txt})});
     const raw=await res.text();
     let data={};
     if(raw){
@@ -453,8 +420,9 @@ function toggleProfile(force){
 async function saveProfile(){
   const input=document.getElementById("usernameInput");
   const username=input.value.trim() || "You";
-  const res=await apiFetch(`/api/profile`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username})});
-  const data=await parseApiResponse(res);
+  const res=await fetch(`${API_BASE}/api/profile`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username})});
+  const data=await res.json();
+  if(!res.ok){alert(data.error || "Could not save profile.");return;}
   profile=data.profile;
   renderProfile();
   renderChat();

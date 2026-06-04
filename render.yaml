@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: ai-agent
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node agent.js
+    envVars:
+      - key: GROQ_API_KEY
+        scope: build,runtime
+      - key: SUPABASE_URL
+        scope: build,runtime
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        scope: build,runtime
+      - key: NODE_ENV
+        value: production

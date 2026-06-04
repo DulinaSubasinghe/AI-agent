@@ -1,24 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 import Groq from "groq-sdk";
 
-const groqApiKey = process.env.GROQ_API_KEY;
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-if (!groqApiKey) {
-  throw new Error(
-    "Missing GROQ_API_KEY environment variable. Set GROQ_API_KEY in Vercel or your local environment."
-  );
-}
-if (!supabaseUrl || !supabaseServiceRoleKey) {
-  throw new Error(
-    "Missing Supabase environment variables. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Vercel."
-  );
-}
-
-export const groq = new Groq({ apiKey: groqApiKey });
-
-export const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+export const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 export const systemInstruction =
   "You are a helpful AI assistant. Be concise, friendly, and accurate.";
