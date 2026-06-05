@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <style>
 :root{--bg:#080b14;--surface:#0e1220;--surface2:#141928;--border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.13);--text:#e8edf5;--muted:#70809d;--accent:#7c6aff;--accent-dim:rgba(124,106,255,.12);--user:#ff7c5c;--ok:#4fd1c7}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -49,6 +50,9 @@ button,input,textarea{font:inherit}
 .comp-wrap{padding:10px 14px 16px;background:linear-gradient(to top,var(--bg) 65%,transparent);flex-shrink:0}.comp{max-width:660px;margin:0 auto;background:var(--surface);border:1px solid var(--border2);border-radius:13px;display:flex;flex-direction:column;transition:.2s;overflow:hidden}.comp:focus-within{border-color:rgba(124,106,255,.45)}
 .comp textarea{background:transparent;border:none;outline:none;resize:none;padding:13px 15px 6px;color:var(--text);font-size:16px;line-height:1.6;min-height:50px;max-height:150px;-webkit-text-size-adjust:100%}.comp textarea::placeholder{color:var(--muted)}
 .comp-foot{display:flex;align-items:center;justify-content:space-between;padding:5px 10px 9px 13px}.hints{display:flex;gap:5px}.htag{font-size:10px;font-family:"JetBrains Mono",monospace;color:var(--muted);background:rgba(255,255,255,.04);border:1px solid var(--border);padding:2px 7px;border-radius:4px}
+.comp-left{display:flex;align-items:center;gap:6px}
+.upload-btn{width:32px;height:32px;background:transparent;border:1px solid var(--border2);border-radius:8px;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;flex-shrink:0}.upload-btn:hover{border-color:rgba(124,106,255,.5);color:var(--accent);background:var(--accent-dim)}
+.upload-btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .sbtn{width:36px;height:36px;background:var(--accent);border:none;border-radius:8px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;flex-shrink:0}.sbtn:hover{opacity:.85}.sbtn:active{transform:scale(.93)}.sbtn:disabled{opacity:.28;cursor:not-allowed;transform:none}.sbtn svg{width:15px;height:15px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .comp-note{text-align:center;font-size:11px;color:var(--muted);margin-top:8px;max-width:660px;margin-left:auto;margin-right:auto}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.48);display:flex;align-items:flex-start;justify-content:center;padding:60px 16px;z-index:10}.overlay[hidden]{display:none}.search-box{width:min(620px,100%);background:#101626;border:1px solid var(--border2);border-radius:14px;box-shadow:0 24px 80px rgba(0,0,0,.5);padding:14px}
@@ -58,14 +62,28 @@ button,input,textarea{font:inherit}
 .model-canvas-wrap{width:100%;height:280px;position:relative;cursor:grab}.model-canvas-wrap:active{cursor:grabbing}
 .model-canvas-wrap canvas{width:100%!important;height:100%!important;display:block}
 .model-label{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-top:1px solid var(--border)}
-.model-label span{font-size:11px;font-family:"JetBrains Mono",monospace;color:var(--muted)}
-.model-actions{display:flex;gap:6px}
-.model-btn{font-size:11px;padding:4px 10px;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--text);cursor:pointer;transition:.15s}.model-btn:hover{background:var(--accent);border-color:var(--accent)}
+.model-label span{font-size:11px;font-family:"JetBrains Mono",monospace;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
+.model-actions{display:flex;gap:6px;flex-shrink:0}
+.model-btn{font-size:11px;padding:4px 10px;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--text);cursor:pointer;transition:.15s;white-space:nowrap}.model-btn:hover{background:var(--accent);border-color:var(--accent)}
+.model-btn.meshy{border-color:rgba(79,209,199,.4);color:var(--ok)}.model-btn.meshy:hover{background:#0a9488;border-color:#0a9488;color:#fff}
 .model-hint{font-size:10px;color:var(--muted);padding:0 12px 8px;font-family:"JetBrains Mono",monospace}
+/* drop zone */
+.drop-zone{margin-left:29px;margin-top:10px;border:2px dashed rgba(124,106,255,.3);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:.2s}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:var(--accent-dim)}
+.drop-zone p{font-size:13px;color:var(--muted);margin-top:6px}
+.drop-zone span{font-size:20px}
+/* meshy card */
+.meshy-card{margin-left:29px;margin-top:10px;border:1px solid rgba(79,209,199,.25);border-radius:10px;padding:16px;background:rgba(79,209,199,.05)}
+.meshy-card h4{font-size:13px;font-weight:600;color:var(--ok);margin-bottom:6px}
+.meshy-card p{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px}
+.meshy-card .meshy-steps{font-size:11px;color:var(--muted);font-family:"JetBrains Mono",monospace;line-height:2}
+.meshy-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 @media(max-width:680px){.sidebar{display:none}.hints{display:none}.mbadge{display:none}.comp-note{display:none}.mbody{font-size:15px}.model-canvas-wrap{height:220px}}
 </style>
 </head>
 <body>
+<input type="file" id="glbFileInput" accept=".glb,.gltf" style="display:none" onchange="handleGLBUpload(event)">
+
 <div class="sidebar">
   <div class="logo">
     <div class="logo-mark">B2</div>
@@ -122,12 +140,17 @@ button,input,textarea{font:inherit}
 
   <div class="comp-wrap">
     <div class="comp">
-      <textarea id="inp" placeholder="Message B2... or try 'generate a 3D red sphere'" rows="1" onkeydown="onKey(event)" oninput="resize(this)"></textarea>
+      <textarea id="inp" placeholder="Message B2... or try 'generate a 3D crystal'" rows="1" onkeydown="onKey(event)" oninput="resize(this)"></textarea>
       <div class="comp-foot">
-        <div class="hints">
-          <span class="htag">Ctrl K search</span>
-          <span class="htag">Enter send</span>
-          <span class="htag">Shift Enter newline</span>
+        <div class="comp-left">
+          <div class="hints">
+            <span class="htag">Ctrl K search</span>
+            <span class="htag">Enter send</span>
+            <span class="htag">Shift Enter newline</span>
+          </div>
+          <button class="upload-btn" title="Upload .glb model" onclick="document.getElementById('glbFileInput').click()">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </button>
         </div>
         <button class="sbtn" id="sbtn" onclick="send()">
           <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -151,26 +174,29 @@ button,input,textarea{font:inherit}
 
 <script>
 const API_BASE = "";
-let chats = [], activeChatId = "", profile = { username: "You" }, busy = false;
+let chats=[], activeChatId="", profile={username:"You"}, busy=false;
 
-function uid(){return crypto.randomUUID ? crypto.randomUUID() : String(Date.now());}
+function uid(){return crypto.randomUUID?crypto.randomUUID():String(Date.now());}
 function gt(){return new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});}
 function getActiveChat(){return chats.find(c=>c.id===activeChatId);}
 function escapeHtml(t){const d=document.createElement("div");d.textContent=t;return d.innerHTML;}
 function resize(el){el.style.height="auto";el.style.height=Math.min(el.scrollHeight,150)+"px";}
 
-// ─── 3D DETECTION ───────────────────────────────────────────────
-const IS_3D = /\b(generate|create|make|build|show|render)\b.{0,40}\b(3d|three[\s-]?d|model|object|shape|mesh|sphere|cube|cylinder|torus|pyramid|cone|box|ring|crystal|sword|chair|table|car|tree|house|rocket|robot)\b/i;
-function is3DRequest(txt){ return IS_3D.test(txt); }
+// ── Complex model detection (things Three.js can't do well) ──
+const IS_COMPLEX = /\b(knife|sword|human|person|man|woman|character|animal|dog|cat|dragon|face|hand|gun|weapon|car|vehicle|building|architecture|creature|monster|robot|armor|helmet)\b/i;
+const IS_3D = /\b(generate|create|make|build|show|render)\b.{0,40}\b(3d|three[\s-]?d|model|object|shape|mesh|sphere|cube|cylinder|torus|pyramid|cone|box|ring|crystal|rocket|tree|house|diamond|star)\b/i;
 
-// ─── 3D VIEWER ───────────────────────────────────────────────────
-let viewerCount = 0;
+function is3DRequest(txt){return IS_3D.test(txt)||(/\b(generate|create|make)\b/i.test(txt)&&IS_COMPLEX.test(txt));}
+function isComplexModel(txt){return IS_COMPLEX.test(txt);}
 
-function create3DViewer(code, label) {
-  const id = "v" + (++viewerCount);
-  const wrap = document.createElement("div");
-  wrap.className = "model-card";
-  wrap.innerHTML = `
+// ── 3D Viewer (Three.js code-based) ──
+let viewerCount=0;
+
+function create3DViewer(code, label){
+  const id="v"+(++viewerCount);
+  const wrap=document.createElement("div");
+  wrap.className="model-card";
+  wrap.innerHTML=`
     <div class="model-canvas-wrap" id="cw-${id}"></div>
     <div class="model-hint">Drag to rotate · Scroll to zoom</div>
     <div class="model-label">
@@ -179,107 +205,196 @@ function create3DViewer(code, label) {
         <button class="model-btn" onclick="downloadModel('${id}')">⬇ Download .glb</button>
       </div>
     </div>`;
-  setTimeout(() => bootViewer(id, code), 50);
+  setTimeout(()=>bootThreeViewer(id,code),50);
   return wrap;
 }
 
-function bootViewer(id, code) {
-  const container = document.getElementById("cw-" + id);
-  if (!container) return;
-  const w = container.clientWidth || 600;
-  const h = container.clientHeight || 280;
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-  renderer.setSize(w, h);
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.shadowMap.enabled = true;
+function createGLBViewer(arrayBuffer, label){
+  const id="v"+(++viewerCount);
+  const wrap=document.createElement("div");
+  wrap.className="model-card";
+  wrap.innerHTML=`
+    <div class="model-canvas-wrap" id="cw-${id}"></div>
+    <div class="model-hint">Drag to rotate · Scroll to zoom</div>
+    <div class="model-label">
+      <span>📦 ${escapeHtml(label)}</span>
+      <div class="model-actions">
+        <button class="model-btn" onclick="downloadModel('${id}')">⬇ Download .glb</button>
+      </div>
+    </div>`;
+  setTimeout(()=>bootGLBViewer(id,arrayBuffer),50);
+  return wrap;
+}
+
+function bootScene(id){
+  const container=document.getElementById("cw-"+id);
+  if(!container)return null;
+  const w=container.clientWidth||600, h=container.clientHeight||280;
+  const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});
+  renderer.setSize(w,h);renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.shadowMap.enabled=true;renderer.outputEncoding=THREE.sRGBEncoding;
   container.appendChild(renderer.domElement);
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0e1220);
-  const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
-  camera.position.set(0, 1.5, 4);
-  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-  const dir = new THREE.DirectionalLight(0xffffff, 1);
-  dir.position.set(5, 8, 5); dir.castShadow = true; scene.add(dir);
-  const fill = new THREE.DirectionalLight(0x7c6aff, 0.4);
-  fill.position.set(-5, -2, -5); scene.add(fill);
-  scene.add(new THREE.GridHelper(10, 20, 0x1a1f35, 0x1a1f35));
-  try {
-    const fn = new Function("THREE", "scene", code + "\nreturn scene.children.find(c=>c.isMesh||c.isGroup);");
-    fn(THREE, scene);
-  } catch(e) {
-    console.warn("3D code error:", e);
-    const geo = new THREE.BoxGeometry(1,1,1);
-    const mat = new THREE.MeshStandardMaterial({color:0x7c6aff});
-    scene.add(new THREE.Mesh(geo, mat));
-  }
-  container._threeData = { renderer, scene, camera };
-  let isDragging = false, prevX = 0, prevY = 0, rotX = 0, rotY = 0, zoom = 4;
-  container.addEventListener("mousedown", e => { isDragging=true; prevX=e.clientX; prevY=e.clientY; });
-  window.addEventListener("mouseup", () => isDragging=false);
-  window.addEventListener("mousemove", e => {
-    if(!isDragging) return;
-    rotY += (e.clientX - prevX) * 0.01;
-    rotX += (e.clientY - prevY) * 0.01;
-    prevX=e.clientX; prevY=e.clientY;
+  const scene=new THREE.Scene();scene.background=new THREE.Color(0x0e1220);
+  const camera=new THREE.PerspectiveCamera(45,w/h,0.01,1000);
+  camera.position.set(0,1.5,4);
+  scene.add(new THREE.AmbientLight(0xffffff,0.7));
+  const dir=new THREE.DirectionalLight(0xffffff,1);dir.position.set(5,8,5);dir.castShadow=true;scene.add(dir);
+  const fill=new THREE.DirectionalLight(0x7c6aff,0.4);fill.position.set(-5,-2,-5);scene.add(fill);
+  scene.add(new THREE.GridHelper(10,20,0x1a1f35,0x1a1f35));
+  container._threeData={renderer,scene,camera};
+  // orbit
+  let isDragging=false,prevX=0,prevY=0,rotX=0,rotY=0,zoom=4;
+  container.addEventListener("mousedown",e=>{isDragging=true;prevX=e.clientX;prevY=e.clientY;});
+  window.addEventListener("mouseup",()=>isDragging=false);
+  window.addEventListener("mousemove",e=>{
+    if(!isDragging)return;
+    rotY+=(e.clientX-prevX)*0.01;rotX+=(e.clientY-prevY)*0.01;
+    prevX=e.clientX;prevY=e.clientY;
   });
-  container.addEventListener("wheel", e => { zoom = Math.max(1, Math.min(10, zoom + e.deltaY*0.01)); });
-  let lastTouchX=0, lastTouchY=0;
-  container.addEventListener("touchstart", e => { lastTouchX=e.touches[0].clientX; lastTouchY=e.touches[0].clientY; });
-  container.addEventListener("touchmove", e => {
+  container.addEventListener("wheel",e=>{zoom=Math.max(0.5,Math.min(20,zoom+e.deltaY*0.01));});
+  let ltx=0,lty=0;
+  container.addEventListener("touchstart",e=>{ltx=e.touches[0].clientX;lty=e.touches[0].clientY;});
+  container.addEventListener("touchmove",e=>{
     e.preventDefault();
-    rotY += (e.touches[0].clientX - lastTouchX) * 0.012;
-    rotX += (e.touches[0].clientY - lastTouchY) * 0.012;
-    lastTouchX=e.touches[0].clientX; lastTouchY=e.touches[0].clientY;
-  }, { passive: false });
-  function animate() {
+    rotY+=(e.touches[0].clientX-ltx)*0.012;rotX+=(e.touches[0].clientY-lty)*0.012;
+    ltx=e.touches[0].clientX;lty=e.touches[0].clientY;
+  },{passive:false});
+  function animate(){
     requestAnimationFrame(animate);
-    camera.position.x = zoom * Math.sin(rotY) * Math.cos(rotX);
-    camera.position.y = zoom * Math.sin(rotX) + 1;
-    camera.position.z = zoom * Math.cos(rotY) * Math.cos(rotX);
-    camera.lookAt(0, 0.5, 0);
-    renderer.render(scene, camera);
+    camera.position.x=zoom*Math.sin(rotY)*Math.cos(rotX);
+    camera.position.y=zoom*Math.sin(rotX)+1;
+    camera.position.z=zoom*Math.cos(rotY)*Math.cos(rotX);
+    camera.lookAt(0,0.5,0);
+    renderer.render(scene,camera);
   }
   animate();
+  return {scene,camera,renderer};
 }
 
-// ─── REAL .GLB DOWNLOAD ──────────────────────────────────────────
-function downloadModel(id) {
-  const container = document.getElementById("cw-" + id);
-  if (!container || !container._threeData) return;
-  const { scene } = container._threeData;
-  const exporter = new THREE.GLTFExporter();
-  exporter.parse(
-    scene,
-    (result) => {
-      const blob = new Blob([result], { type: "application/octet-stream" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "b2-model.glb";
-      a.click();
-      URL.revokeObjectURL(url);
-    },
-    { binary: true }
-  );
+function bootThreeViewer(id,code){
+  const result=bootScene(id);if(!result)return;
+  const {scene}=result;
+  try{
+    const fn=new Function("THREE","scene",code+"\nreturn null;");
+    fn(THREE,scene);
+  }catch(e){
+    console.warn("3D code error:",e);
+    scene.add(new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({color:0x7c6aff})));
+  }
 }
 
-// ─── SYSTEM PROMPT FOR 3D ────────────────────────────────────────
-const SYSTEM_3D = `You are a Three.js 3D model code generator.
-The user wants a 3D object. Respond with ONLY a JavaScript code block (no explanation, no markdown fences) that:
+function bootGLBViewer(id,arrayBuffer){
+  const result=bootScene(id);if(!result)return;
+  const {scene,camera}=result;
+  const loader=new THREE.GLTFLoader();
+  loader.parse(arrayBuffer,"",(gltf)=>{
+    const model=gltf.scene;
+    // Auto-scale and center
+    const box=new THREE.Box3().setFromObject(model);
+    const size=box.getSize(new THREE.Vector3());
+    const maxDim=Math.max(size.x,size.y,size.z);
+    const scale=2/maxDim;
+    model.scale.setScalar(scale);
+    const center=box.getCenter(new THREE.Vector3());
+    model.position.sub(center.multiplyScalar(scale));
+    model.position.y+=size.y*scale/2;
+    scene.add(model);
+    // Adjust camera zoom based on size
+    camera.position.set(0,1.5,maxDim*scale*3);
+  },(err)=>{
+    console.error("GLB load error:",err);
+  });
+}
+
+// ── Download .glb ──
+function downloadModel(id){
+  const container=document.getElementById("cw-"+id);
+  if(!container||!container._threeData)return;
+  const {scene}=container._threeData;
+  const exporter=new THREE.GLTFExporter();
+  exporter.parse(scene,(result)=>{
+    const blob=new Blob([result],{type:"application/octet-stream"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download="b2-model.glb";a.click();
+    URL.revokeObjectURL(url);
+  },{binary:true});
+}
+
+// ── GLB Upload handler ──
+function handleGLBUpload(event){
+  const file=event.target.files[0];
+  if(!file)return;
+  event.target.value="";
+  const reader=new FileReader();
+  reader.onload=(e)=>{
+    const arrayBuffer=e.target.result;
+    addGLBMsg(arrayBuffer,file.name);
+    const chat=getActiveChat();
+    if(chat){
+      chat.messages.push({role:"user",content:`[Uploaded 3D model: ${file.name}]`});
+      chat.updated_at=new Date().toISOString();
+      updateTitleFromFirstMessage(chat);
+      renderRecent();
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── Drag & drop on messages area ──
+const msgsEl=document.getElementById("msgs");
+msgsEl.addEventListener("dragover",e=>{e.preventDefault();});
+msgsEl.addEventListener("drop",e=>{
+  e.preventDefault();
+  const file=e.dataTransfer.files[0];
+  if(file&&(file.name.endsWith(".glb")||file.name.endsWith(".gltf"))){
+    const reader=new FileReader();
+    reader.onload=(ev)=>addGLBMsg(ev.target.result,file.name);
+    reader.readAsArrayBuffer(file);
+  }
+});
+
+// ── Meshy redirect card ──
+function addMeshyCard(prompt){
+  const e=document.getElementById("empty");if(e)e.remove();
+  const d=document.createElement("div");d.className="msg ai";
+  const encodedPrompt=encodeURIComponent(prompt);
+  d.innerHTML=`
+    <div class="mhdr"><div class="mav ai">B2</div><span class="mname">B2</span><span class="mtime">${gt()}</span></div>
+    <div class="mbody">This model is too complex for my built-in generator. I'd recommend using Meshy.ai — it's free and generates proper 3D models from text!</div>
+    <div class="meshy-card">
+      <h4>🎨 Generate on Meshy.ai</h4>
+      <p>Meshy generates high-quality 3D models with textures. Free tier available, no credit card needed on their website.</p>
+      <div class="meshy-steps">
+        1. Click "Open Meshy" below → generate your model<br>
+        2. Download the .glb file from Meshy<br>
+        3. Click the ⬆ upload button in B2 to view it here
+      </div>
+      <div class="meshy-actions">
+        <button class="model-btn meshy" onclick="window.open('https://www.meshy.ai/generate?prompt=${encodedPrompt}','_blank')">🔗 Open Meshy</button>
+        <button class="model-btn" onclick="document.getElementById('glbFileInput').click()">⬆ Upload .glb</button>
+      </div>
+    </div>`;
+  document.getElementById("mwrap").appendChild(d);
+  document.getElementById("msgs").scrollTop=99999;
+}
+
+// ── System prompt for 3D ──
+const SYSTEM_3D=`You are a Three.js 3D model code generator.
+The user wants a 3D object. Respond with ONLY JavaScript code (no explanation, no markdown fences) that:
 - Uses the THREE object and scene already available
 - Creates geometry, material, and mesh
 - Adds the mesh to scene with scene.add(mesh)
 - Centers the object around origin (0,0,0)
-- Makes it look good with interesting colors or MeshStandardMaterial
+- Uses MeshStandardMaterial with interesting colors
 - Keep it under 40 lines
 - For complex objects combine multiple meshes using THREE.Group
-Example for a red sphere:
+Example:
 const geo = new THREE.SphereGeometry(1, 32, 32);
 const mat = new THREE.MeshStandardMaterial({color: 0xff4444, roughness: 0.3, metalness: 0.2});
 const mesh = new THREE.Mesh(geo, mat);
 scene.add(mesh);`;
 
-// ─── CHAT CORE ────────────────────────────────────────────────────
+// ── Chat core ──
 async function loadState(){
   try{
     const res=await fetch(`${API_BASE}/api/state`);
@@ -317,8 +432,7 @@ async function clearCurrentChat(){
 }
 
 async function deleteCurrentChat(){
-  const chat=getActiveChat();
-  if(!chat)return;
+  const chat=getActiveChat();if(!chat)return;
   if(!confirm(`Delete "${chat.title}"?`))return;
   const res=await fetch(`${API_BASE}/api/chats/${chat.id}/delete`,{method:"DELETE"});
   const data=await res.json();
@@ -349,12 +463,12 @@ function renderRecent(){
 function renderEmpty(){
   document.getElementById("mwrap").innerHTML=`<div class="empty" id="empty">
     <div class="eorb">B2</div><h2>What's on your mind?</h2>
-    <p>Ask anything, or try generating a 3D model!</p>
+    <p>Ask anything, generate 3D models, or upload a .glb file!</p>
     <div class="chips">
       <button class="chip" onclick="useSug(this)">Generate a 3D crystal</button>
       <button class="chip" onclick="useSug(this)">Generate a 3D rocket</button>
+      <button class="chip" onclick="useSug(this)">Create a 3D diamond</button>
       <button class="chip" onclick="useSug(this)">Explain async/await</button>
-      <button class="chip" onclick="useSug(this)">Write a Python script</button>
     </div></div>`;
 }
 
@@ -367,7 +481,7 @@ function renderChat(){
   document.getElementById("msgs").scrollTop=99999;
 }
 
-function addMsg(role,text,appendToHistory=true){
+function addMsg(role,text){
   const e=document.getElementById("empty");if(e)e.remove();
   const d=document.createElement("div");d.className=`msg ${role}`;
   const isAI=role==="ai";
@@ -379,11 +493,21 @@ function addMsg(role,text,appendToHistory=true){
   return d;
 }
 
-function add3DMsg(code, label){
+function add3DMsg(code,label){
   const e=document.getElementById("empty");if(e)e.remove();
   const d=document.createElement("div");d.className="msg ai";
   const viewer=create3DViewer(code,label);
   d.innerHTML=`<div class="mhdr"><div class="mav ai">B2</div><span class="mname">B2</span><span class="mtime">${gt()}</span></div><div class="mbody">Here's your 3D model — drag to rotate, scroll to zoom!</div>`;
+  d.appendChild(viewer);
+  document.getElementById("mwrap").appendChild(d);
+  document.getElementById("msgs").scrollTop=99999;
+}
+
+function addGLBMsg(arrayBuffer,filename){
+  const e=document.getElementById("empty");if(e)e.remove();
+  const d=document.createElement("div");d.className="msg ai";
+  const viewer=createGLBViewer(arrayBuffer,filename);
+  d.innerHTML=`<div class="mhdr"><div class="mav ai">B2</div><span class="mname">B2</span><span class="mtime">${gt()}</span></div><div class="mbody">Here's your uploaded model — drag to rotate, scroll to zoom!</div>`;
   d.appendChild(viewer);
   document.getElementById("mwrap").appendChild(d);
   document.getElementById("msgs").scrollTop=99999;
@@ -418,34 +542,44 @@ async function send(){
   renderRecent();document.getElementById("chatTitle").textContent=chat.title;
   showTyping();
 
+  // 3D path
   if(is3DRequest(txt)){
+    hideTyping();
+    // Complex model → redirect to Meshy
+    if(isComplexModel(txt)){
+      addMeshyCard(txt);
+      chat.messages.push({role:"assistant",content:"[Redirected to Meshy for complex model]"});
+      chat.updated_at=new Date().toISOString();
+      busy=false;document.getElementById("sbtn").disabled=false;inp.focus();
+      return;
+    }
+    // Simple model → generate with Three.js
     try{
       const res=await fetch(`${API_BASE}/api/chat`,{
         method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({messages:[{role:"system",content:SYSTEM_3D},{role:"user",content:txt}]})
       });
       const data=await res.json();
-      hideTyping();
       const clean=(data.message||"").replace(/```[\w]*\n?/g,"").replace(/```/g,"").trim();
-      add3DMsg(clean, txt);
+      add3DMsg(clean,txt);
       chat.messages.push({role:"assistant",content:"[3D model generated]"});
       chat.updated_at=new Date().toISOString();
     }catch(err){
-      hideTyping();
       addMsg("ai",`Error generating 3D model: ${err.message}`);
     }
     busy=false;document.getElementById("sbtn").disabled=false;inp.focus();
     return;
   }
 
+  // Normal chat
   try{
     const res=await fetch(`${API_BASE}/api/chat`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chatId:chat.id,content:txt})});
     const raw=await res.text();
     let data={};
-    if(raw){try{data=JSON.parse(raw);}catch{throw new Error(`Non-JSON response: ${raw.slice(0,120)}`);}}
-    else{throw new Error("Empty response from server.");}
+    if(raw){try{data=JSON.parse(raw);}catch{throw new Error(`Non-JSON: ${raw.slice(0,120)}`);}}
+    else{throw new Error("Empty response.");}
     hideTyping();
-    if(!res.ok)throw new Error(data.error||"The request failed.");
+    if(!res.ok)throw new Error(data.error||"Request failed.");
     const reply=data.message||"No response.";
     chat.messages.push({role:"assistant",content:reply});
     chat.updated_at=new Date().toISOString();
