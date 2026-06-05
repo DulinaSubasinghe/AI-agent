@@ -6,6 +6,7 @@
 <title>B2</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
 <style>
 :root{--bg:#080b14;--surface:#0e1220;--surface2:#141928;--border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.13);--text:#e8edf5;--muted:#70809d;--accent:#7c6aff;--accent-dim:rgba(124,106,255,.12);--user:#ff7c5c;--ok:#4fd1c7}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -52,7 +53,6 @@ button,input,textarea{font:inherit}
 .comp-note{text-align:center;font-size:11px;color:var(--muted);margin-top:8px;max-width:660px;margin-left:auto;margin-right:auto}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.48);display:flex;align-items:flex-start;justify-content:center;padding:60px 16px;z-index:10}.overlay[hidden]{display:none}.search-box{width:min(620px,100%);background:#101626;border:1px solid var(--border2);border-radius:14px;box-shadow:0 24px 80px rgba(0,0,0,.5);padding:14px}
 .search-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.search-head strong{font-size:14px}.search-close{border:0;background:transparent;color:var(--muted);font-size:22px;cursor:pointer}.search-results{margin-top:12px;max-height:55vh;overflow:auto}.sres{width:100%;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:9px;padding:10px;margin-bottom:8px;text-align:left;cursor:pointer}.sres:hover{border-color:rgba(124,106,255,.42)}.sres-title{font-size:13px;font-weight:600}.sres-text{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4}.empty-results{color:var(--muted);font-size:13px;padding:10px}
-
 /* 3D VIEWER */
 .model-card{margin-left:29px;margin-top:10px;border:1px solid rgba(124,106,255,.3);border-radius:10px;overflow:hidden;background:var(--surface2)}
 .model-canvas-wrap{width:100%;height:280px;position:relative;cursor:grab}.model-canvas-wrap:active{cursor:grabbing}
@@ -62,15 +62,7 @@ button,input,textarea{font:inherit}
 .model-actions{display:flex;gap:6px}
 .model-btn{font-size:11px;padding:4px 10px;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--text);cursor:pointer;transition:.15s}.model-btn:hover{background:var(--accent);border-color:var(--accent)}
 .model-hint{font-size:10px;color:var(--muted);padding:0 12px 8px;font-family:"JetBrains Mono",monospace}
-
-@media(max-width:680px){
-  .sidebar{display:none}
-  .hints{display:none}
-  .mbadge{display:none}
-  .comp-note{display:none}
-  .mbody{font-size:15px}
-  .model-canvas-wrap{height:220px}
-}
+@media(max-width:680px){.sidebar{display:none}.hints{display:none}.mbadge{display:none}.comp-note{display:none}.mbody{font-size:15px}.model-canvas-wrap{height:220px}}
 </style>
 </head>
 <body>
@@ -108,7 +100,7 @@ button,input,textarea{font:inherit}
   <div class="hdr">
     <div class="hdr-l">
       <div class="hdr-title" id="chatTitle">New chat</div>
-      <div class="mbadge">llama-3.1-8b</div>
+      <div class="mbadge">llama-3.3-70b</div>
     </div>
     <div class="hdr-r">
       <button class="ibtn" title="Clear current chat" onclick="clearCurrentChat()">
@@ -169,7 +161,6 @@ function resize(el){el.style.height="auto";el.style.height=Math.min(el.scrollHei
 
 // ─── 3D DETECTION ───────────────────────────────────────────────
 const IS_3D = /\b(generate|create|make|build|show|render)\b.{0,40}\b(3d|three[\s-]?d|model|object|shape|mesh|sphere|cube|cylinder|torus|pyramid|cone|box|ring|crystal|sword|chair|table|car|tree|house|rocket|robot)\b/i;
-
 function is3DRequest(txt){ return IS_3D.test(txt); }
 
 // ─── 3D VIEWER ───────────────────────────────────────────────────
@@ -185,11 +176,9 @@ function create3DViewer(code, label) {
     <div class="model-label">
       <span>✦ ${escapeHtml(label)}</span>
       <div class="model-actions">
-        <button class="model-btn" onclick="downloadModel('${id}')">Download .glb</button>
+        <button class="model-btn" onclick="downloadModel('${id}')">⬇ Download .glb</button>
       </div>
     </div>`;
-
-  // Boot Three.js after DOM insert
   setTimeout(() => bootViewer(id, code), 50);
   return wrap;
 }
@@ -197,56 +186,34 @@ function create3DViewer(code, label) {
 function bootViewer(id, code) {
   const container = document.getElementById("cw-" + id);
   if (!container) return;
-
   const w = container.clientWidth || 600;
   const h = container.clientHeight || 280;
-
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
   renderer.setSize(w, h);
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.shadowMap.enabled = true;
   container.appendChild(renderer.domElement);
-
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x0e1220);
-
   const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
   camera.position.set(0, 1.5, 4);
-
-  // Lights
   scene.add(new THREE.AmbientLight(0xffffff, 0.6));
   const dir = new THREE.DirectionalLight(0xffffff, 1);
-  dir.position.set(5, 8, 5);
-  dir.castShadow = true;
-  scene.add(dir);
+  dir.position.set(5, 8, 5); dir.castShadow = true; scene.add(dir);
   const fill = new THREE.DirectionalLight(0x7c6aff, 0.4);
-  fill.position.set(-5, -2, -5);
-  scene.add(fill);
-
-  // Grid
-  const grid = new THREE.GridHelper(10, 20, 0x1a1f35, 0x1a1f35);
-  scene.add(grid);
-
-  // Run AI-generated code to build the mesh
-  let mesh;
+  fill.position.set(-5, -2, -5); scene.add(fill);
+  scene.add(new THREE.GridHelper(10, 20, 0x1a1f35, 0x1a1f35));
   try {
     const fn = new Function("THREE", "scene", code + "\nreturn scene.children.find(c=>c.isMesh||c.isGroup);");
-    mesh = fn(THREE, scene);
+    fn(THREE, scene);
   } catch(e) {
     console.warn("3D code error:", e);
-    // Fallback: colored box
     const geo = new THREE.BoxGeometry(1,1,1);
     const mat = new THREE.MeshStandardMaterial({color:0x7c6aff});
-    mesh = new THREE.Mesh(geo, mat);
-    scene.add(mesh);
+    scene.add(new THREE.Mesh(geo, mat));
   }
-
-  // Store renderer+scene for download
   container._threeData = { renderer, scene, camera };
-
-  // Orbit controls (manual)
   let isDragging = false, prevX = 0, prevY = 0, rotX = 0, rotY = 0, zoom = 4;
-
   container.addEventListener("mousedown", e => { isDragging=true; prevX=e.clientX; prevY=e.clientY; });
   window.addEventListener("mouseup", () => isDragging=false);
   window.addEventListener("mousemove", e => {
@@ -256,8 +223,6 @@ function bootViewer(id, code) {
     prevX=e.clientX; prevY=e.clientY;
   });
   container.addEventListener("wheel", e => { zoom = Math.max(1, Math.min(10, zoom + e.deltaY*0.01)); });
-
-  // Touch
   let lastTouchX=0, lastTouchY=0;
   container.addEventListener("touchstart", e => { lastTouchX=e.touches[0].clientX; lastTouchY=e.touches[0].clientY; });
   container.addEventListener("touchmove", e => {
@@ -266,7 +231,6 @@ function bootViewer(id, code) {
     rotX += (e.touches[0].clientY - lastTouchY) * 0.012;
     lastTouchX=e.touches[0].clientX; lastTouchY=e.touches[0].clientY;
   }, { passive: false });
-
   function animate() {
     requestAnimationFrame(animate);
     camera.position.x = zoom * Math.sin(rotY) * Math.cos(rotX);
@@ -278,30 +242,37 @@ function bootViewer(id, code) {
   animate();
 }
 
-// Download as .glb using manual binary GLB
+// ─── REAL .GLB DOWNLOAD ──────────────────────────────────────────
 function downloadModel(id) {
   const container = document.getElementById("cw-" + id);
   if (!container || !container._threeData) return;
-
-  // Capture screenshot as fallback (full GLB export needs GLTFExporter CDN)
-  const { renderer, scene, camera } = container._threeData;
-  renderer.render(scene, camera);
-  const url = renderer.domElement.toDataURL("image/png");
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "b2-model-preview.png";
-  a.click();
+  const { scene } = container._threeData;
+  const exporter = new THREE.GLTFExporter();
+  exporter.parse(
+    scene,
+    (result) => {
+      const blob = new Blob([result], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "b2-model.glb";
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+    { binary: true }
+  );
 }
 
 // ─── SYSTEM PROMPT FOR 3D ────────────────────────────────────────
-const SYSTEM_3D = `You are a Three.js 3D model code generator. 
+const SYSTEM_3D = `You are a Three.js 3D model code generator.
 The user wants a 3D object. Respond with ONLY a JavaScript code block (no explanation, no markdown fences) that:
 - Uses the THREE object and scene already available
 - Creates geometry, material, and mesh
 - Adds the mesh to scene with scene.add(mesh)
 - Centers the object around origin (0,0,0)
 - Makes it look good with interesting colors or MeshStandardMaterial
-- Keep it under 30 lines
+- Keep it under 40 lines
+- For complex objects combine multiple meshes using THREE.Group
 Example for a red sphere:
 const geo = new THREE.SphereGeometry(1, 32, 32);
 const mat = new THREE.MeshStandardMaterial({color: 0xff4444, roughness: 0.3, metalness: 0.2});
@@ -447,23 +418,15 @@ async function send(){
   renderRecent();document.getElementById("chatTitle").textContent=chat.title;
   showTyping();
 
-  // ── 3D path ──
   if(is3DRequest(txt)){
     try{
       const res=await fetch(`${API_BASE}/api/chat`,{
         method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-          messages:[
-            {role:"system",content:SYSTEM_3D},
-            {role:"user",content:txt}
-          ]
-        })
+        body:JSON.stringify({messages:[{role:"system",content:SYSTEM_3D},{role:"user",content:txt}]})
       });
       const data=await res.json();
       hideTyping();
-      const code=data.message||"";
-      // Strip markdown fences if AI added them
-      const clean=code.replace(/```[\w]*\n?/g,"").replace(/```/g,"").trim();
+      const clean=(data.message||"").replace(/```[\w]*\n?/g,"").replace(/```/g,"").trim();
       add3DMsg(clean, txt);
       chat.messages.push({role:"assistant",content:"[3D model generated]"});
       chat.updated_at=new Date().toISOString();
@@ -475,7 +438,6 @@ async function send(){
     return;
   }
 
-  // ── Normal chat path ──
   try{
     const res=await fetch(`${API_BASE}/api/chat`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chatId:chat.id,content:txt})});
     const raw=await res.text();
