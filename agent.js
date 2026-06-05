@@ -8,7 +8,7 @@ import http from "http";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
-dotenv.config({ path: join(__dirname, "key.env"), quiet: true });
+dotenv.config();
 
 const apiKey = process.env.GROQ_API_KEY;
 if (!apiKey) {

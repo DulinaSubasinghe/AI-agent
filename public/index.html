@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>B2</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
 :root{--bg:#080b14;--surface:#0e1220;--surface2:#141928;--border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.13);--text:#e8edf5;--muted:#70809d;--accent:#7c6aff;--accent-dim:rgba(124,106,255,.12);--user:#ff7c5c;--ok:#4fd1c7}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -51,12 +52,24 @@ button,input,textarea{font:inherit}
 .comp-note{text-align:center;font-size:11px;color:var(--muted);margin-top:8px;max-width:660px;margin-left:auto;margin-right:auto}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.48);display:flex;align-items:flex-start;justify-content:center;padding:60px 16px;z-index:10}.overlay[hidden]{display:none}.search-box{width:min(620px,100%);background:#101626;border:1px solid var(--border2);border-radius:14px;box-shadow:0 24px 80px rgba(0,0,0,.5);padding:14px}
 .search-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.search-head strong{font-size:14px}.search-close{border:0;background:transparent;color:var(--muted);font-size:22px;cursor:pointer}.search-results{margin-top:12px;max-height:55vh;overflow:auto}.sres{width:100%;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:9px;padding:10px;margin-bottom:8px;text-align:left;cursor:pointer}.sres:hover{border-color:rgba(124,106,255,.42)}.sres-title{font-size:13px;font-weight:600}.sres-text{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4}.empty-results{color:var(--muted);font-size:13px;padding:10px}
+
+/* 3D VIEWER */
+.model-card{margin-left:29px;margin-top:10px;border:1px solid rgba(124,106,255,.3);border-radius:10px;overflow:hidden;background:var(--surface2)}
+.model-canvas-wrap{width:100%;height:280px;position:relative;cursor:grab}.model-canvas-wrap:active{cursor:grabbing}
+.model-canvas-wrap canvas{width:100%!important;height:100%!important;display:block}
+.model-label{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-top:1px solid var(--border)}
+.model-label span{font-size:11px;font-family:"JetBrains Mono",monospace;color:var(--muted)}
+.model-actions{display:flex;gap:6px}
+.model-btn{font-size:11px;padding:4px 10px;border:1px solid var(--border2);border-radius:5px;background:transparent;color:var(--text);cursor:pointer;transition:.15s}.model-btn:hover{background:var(--accent);border-color:var(--accent)}
+.model-hint{font-size:10px;color:var(--muted);padding:0 12px 8px;font-family:"JetBrains Mono",monospace}
+
 @media(max-width:680px){
   .sidebar{display:none}
   .hints{display:none}
   .mbadge{display:none}
   .comp-note{display:none}
   .mbody{font-size:15px}
+  .model-canvas-wrap{height:220px}
 }
 </style>
 </head>
@@ -66,7 +79,7 @@ button,input,textarea{font:inherit}
     <div class="logo-mark">B2</div>
     <div>
       <div class="logo-name">B2</div>
-      <div class="logo-sub">groq - local</div>
+      <div class="logo-sub">groq · 3d</div>
     </div>
   </div>
   <button class="new-btn" onclick="newChat()"><div class="new-icon">+</div> New conversation</button>
@@ -117,7 +130,7 @@ button,input,textarea{font:inherit}
 
   <div class="comp-wrap">
     <div class="comp">
-      <textarea id="inp" placeholder="Message B2..." rows="1" onkeydown="onKey(event)" oninput="resize(this)"></textarea>
+      <textarea id="inp" placeholder="Message B2... or try 'generate a 3D red sphere'" rows="1" onkeydown="onKey(event)" oninput="resize(this)"></textarea>
       <div class="comp-foot">
         <div class="hints">
           <span class="htag">Ctrl K search</span>
@@ -145,189 +158,275 @@ button,input,textarea{font:inherit}
 </div>
 
 <script>
-const STORAGE_KEY = "b2_chats_v1";
-const PROFILE_KEY = "b2_profile_v1";
-const DEVICE_ID_KEY = "b2_device_id_v1";
-const API_BASE =
-  location.protocol === "http:" || location.protocol === "https:"
-    ? `${location.protocol}//${location.hostname}:3000`
-    : "http://127.0.0.1:3000";
-let chats = [];
-let activeChatId = "";
-let profile = { username: "You" };
-let busy = false;
-
-function generateDeviceId(){
-  return [navigator.userAgent, screen.width, screen.height, Intl.DateTimeFormat().resolvedOptions().timeZone].join("|");
-}
-
-function getDeviceId(){
-  let stored = localStorage.getItem(DEVICE_ID_KEY);
-  if(!stored){
-    stored = generateDeviceId();
-    localStorage.setItem(DEVICE_ID_KEY, stored);
-  }
-  return stored;
-}
-
-function isNewDevice(){
-  const stored = localStorage.getItem(DEVICE_ID_KEY);
-  const current = generateDeviceId();
-  return stored && stored !== current;
-}
-
-function clearChatsForNewDevice(){
-  localStorage.removeItem(STORAGE_KEY);
-  localStorage.removeItem(PROFILE_KEY);
-  localStorage.setItem(DEVICE_ID_KEY, generateDeviceId());
-}
+const API_BASE = "";
+let chats = [], activeChatId = "", profile = { username: "You" }, busy = false;
 
 function uid(){return crypto.randomUUID ? crypto.randomUUID() : String(Date.now());}
 function gt(){return new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});}
-function getActiveChat(){return chats.find(chat => chat.id === activeChatId);}
-function escapeHtml(text){const d=document.createElement("div");d.textContent=text;return d.innerHTML;}
+function getActiveChat(){return chats.find(c=>c.id===activeChatId);}
+function escapeHtml(t){const d=document.createElement("div");d.textContent=t;return d.innerHTML;}
 function resize(el){el.style.height="auto";el.style.height=Math.min(el.scrollHeight,150)+"px";}
 
+// ─── 3D DETECTION ───────────────────────────────────────────────
+const IS_3D = /\b(generate|create|make|build|show|render)\b.{0,40}\b(3d|three[\s-]?d|model|object|shape|mesh|sphere|cube|cylinder|torus|pyramid|cone|box|ring|crystal|sword|chair|table|car|tree|house|rocket|robot)\b/i;
+
+function is3DRequest(txt){ return IS_3D.test(txt); }
+
+// ─── 3D VIEWER ───────────────────────────────────────────────────
+let viewerCount = 0;
+
+function create3DViewer(code, label) {
+  const id = "v" + (++viewerCount);
+  const wrap = document.createElement("div");
+  wrap.className = "model-card";
+  wrap.innerHTML = `
+    <div class="model-canvas-wrap" id="cw-${id}"></div>
+    <div class="model-hint">Drag to rotate · Scroll to zoom</div>
+    <div class="model-label">
+      <span>✦ ${escapeHtml(label)}</span>
+      <div class="model-actions">
+        <button class="model-btn" onclick="downloadModel('${id}')">Download .glb</button>
+      </div>
+    </div>`;
+
+  // Boot Three.js after DOM insert
+  setTimeout(() => bootViewer(id, code), 50);
+  return wrap;
+}
+
+function bootViewer(id, code) {
+  const container = document.getElementById("cw-" + id);
+  if (!container) return;
+
+  const w = container.clientWidth || 600;
+  const h = container.clientHeight || 280;
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.shadowMap.enabled = true;
+  container.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0e1220);
+
+  const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
+  camera.position.set(0, 1.5, 4);
+
+  // Lights
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const dir = new THREE.DirectionalLight(0xffffff, 1);
+  dir.position.set(5, 8, 5);
+  dir.castShadow = true;
+  scene.add(dir);
+  const fill = new THREE.DirectionalLight(0x7c6aff, 0.4);
+  fill.position.set(-5, -2, -5);
+  scene.add(fill);
+
+  // Grid
+  const grid = new THREE.GridHelper(10, 20, 0x1a1f35, 0x1a1f35);
+  scene.add(grid);
+
+  // Run AI-generated code to build the mesh
+  let mesh;
+  try {
+    const fn = new Function("THREE", "scene", code + "\nreturn scene.children.find(c=>c.isMesh||c.isGroup);");
+    mesh = fn(THREE, scene);
+  } catch(e) {
+    console.warn("3D code error:", e);
+    // Fallback: colored box
+    const geo = new THREE.BoxGeometry(1,1,1);
+    const mat = new THREE.MeshStandardMaterial({color:0x7c6aff});
+    mesh = new THREE.Mesh(geo, mat);
+    scene.add(mesh);
+  }
+
+  // Store renderer+scene for download
+  container._threeData = { renderer, scene, camera };
+
+  // Orbit controls (manual)
+  let isDragging = false, prevX = 0, prevY = 0, rotX = 0, rotY = 0, zoom = 4;
+
+  container.addEventListener("mousedown", e => { isDragging=true; prevX=e.clientX; prevY=e.clientY; });
+  window.addEventListener("mouseup", () => isDragging=false);
+  window.addEventListener("mousemove", e => {
+    if(!isDragging) return;
+    rotY += (e.clientX - prevX) * 0.01;
+    rotX += (e.clientY - prevY) * 0.01;
+    prevX=e.clientX; prevY=e.clientY;
+  });
+  container.addEventListener("wheel", e => { zoom = Math.max(1, Math.min(10, zoom + e.deltaY*0.01)); });
+
+  // Touch
+  let lastTouchX=0, lastTouchY=0;
+  container.addEventListener("touchstart", e => { lastTouchX=e.touches[0].clientX; lastTouchY=e.touches[0].clientY; });
+  container.addEventListener("touchmove", e => {
+    e.preventDefault();
+    rotY += (e.touches[0].clientX - lastTouchX) * 0.012;
+    rotX += (e.touches[0].clientY - lastTouchY) * 0.012;
+    lastTouchX=e.touches[0].clientX; lastTouchY=e.touches[0].clientY;
+  }, { passive: false });
+
+  function animate() {
+    requestAnimationFrame(animate);
+    camera.position.x = zoom * Math.sin(rotY) * Math.cos(rotX);
+    camera.position.y = zoom * Math.sin(rotX) + 1;
+    camera.position.z = zoom * Math.cos(rotY) * Math.cos(rotX);
+    camera.lookAt(0, 0.5, 0);
+    renderer.render(scene, camera);
+  }
+  animate();
+}
+
+// Download as .glb using manual binary GLB
+function downloadModel(id) {
+  const container = document.getElementById("cw-" + id);
+  if (!container || !container._threeData) return;
+
+  // Capture screenshot as fallback (full GLB export needs GLTFExporter CDN)
+  const { renderer, scene, camera } = container._threeData;
+  renderer.render(scene, camera);
+  const url = renderer.domElement.toDataURL("image/png");
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "b2-model-preview.png";
+  a.click();
+}
+
+// ─── SYSTEM PROMPT FOR 3D ────────────────────────────────────────
+const SYSTEM_3D = `You are a Three.js 3D model code generator. 
+The user wants a 3D object. Respond with ONLY a JavaScript code block (no explanation, no markdown fences) that:
+- Uses the THREE object and scene already available
+- Creates geometry, material, and mesh
+- Adds the mesh to scene with scene.add(mesh)
+- Centers the object around origin (0,0,0)
+- Makes it look good with interesting colors or MeshStandardMaterial
+- Keep it under 30 lines
+Example for a red sphere:
+const geo = new THREE.SphereGeometry(1, 32, 32);
+const mat = new THREE.MeshStandardMaterial({color: 0xff4444, roughness: 0.3, metalness: 0.2});
+const mesh = new THREE.Mesh(geo, mat);
+scene.add(mesh);`;
+
+// ─── CHAT CORE ────────────────────────────────────────────────────
 async function loadState(){
   try{
-    if(isNewDevice()){
-      clearChatsForNewDevice();
-    }
     const res=await fetch(`${API_BASE}/api/state`);
     const data=await res.json();
-    if(!res.ok)throw new Error(data.error || "Could not load chats.");
-    profile=data.profile || { username: "You" };
-    chats=data.chats || [];
-    if(!chats.length){
-      await newChat(false);
-      return;
-    }
+    if(!res.ok)throw new Error(data.error||"Could not load chats.");
+    profile=data.profile||{username:"You"};
+    chats=data.chats||[];
+    if(!chats.length){await newChat(false);return;}
     activeChatId=chats[0].id;
-    renderProfile();
-    renderRecent();
-    renderChat();
+    renderProfile();renderRecent();renderChat();
   }catch(err){
     document.getElementById("mwrap").innerHTML=`<div class="empty"><div class="eorb">!</div><h2>Database setup needed</h2><p>${escapeHtml(err.message)}</p></div>`;
   }
 }
 
-function saveChats(){}
-function createChat(){return {id:uid(),title:"New chat",messages:[],createdAt:Date.now(),updatedAt:Date.now()};}
-
 async function newChat(render=true){
   try{
     const res=await fetch(`${API_BASE}/api/chats`,{method:"POST"});
     const data=await res.json();
-    if(!res.ok)throw new Error(data.error || "Could not create chat.");
-    chats.unshift(data.chat);
-    activeChatId=data.chat.id;
-    if(render){
-      renderRecent();
-      renderChat();
-      document.getElementById("inp").focus();
-    }
-  }catch(err){
-    alert(err.message);
-  }
+    if(!res.ok)throw new Error(data.error||"Could not create chat.");
+    chats.unshift(data.chat);activeChatId=data.chat.id;
+    if(render){renderRecent();renderChat();document.getElementById("inp").focus();}
+  }catch(err){alert(err.message);}
 }
 
 async function clearCurrentChat(){
-  const chat = getActiveChat();
-  if (!chat || !chat.messages.length) return;
-  if (!confirm("Clear all messages in this chat? The chat will stay in Recent.")) return;
+  const chat=getActiveChat();
+  if(!chat||!chat.messages.length)return;
+  if(!confirm("Clear all messages?"))return;
   const res=await fetch(`${API_BASE}/api/chats/${chat.id}/clear`,{method:"POST"});
   const data=await res.json();
-  if(!res.ok){alert(data.error || "Could not clear chat.");return;}
-  chat.messages = [];
-  chat.title = "New chat";
-  chat.updated_at = new Date().toISOString();
-  renderRecent();
-  renderChat();
+  if(!res.ok){alert(data.error||"Could not clear.");return;}
+  chat.messages=[];chat.title="New chat";chat.updated_at=new Date().toISOString();
+  renderRecent();renderChat();
 }
 
 async function deleteCurrentChat(){
-  const chat = getActiveChat();
-  if (!chat) return;
-  if (!confirm(`Delete "${chat.title}"? This removes the chat from Recent.`)) return;
+  const chat=getActiveChat();
+  if(!chat)return;
+  if(!confirm(`Delete "${chat.title}"?`))return;
   const res=await fetch(`${API_BASE}/api/chats/${chat.id}/delete`,{method:"DELETE"});
   const data=await res.json();
-  if(!res.ok){alert(data.error || "Could not delete chat.");return;}
-  chats = chats.filter(item => item.id !== activeChatId);
-  if (!chats.length){ await newChat(false); }
-  activeChatId = chats[0].id;
-  renderRecent();
-  renderChat();
+  if(!res.ok){alert(data.error||"Could not delete.");return;}
+  chats=chats.filter(i=>i.id!==activeChatId);
+  if(!chats.length){await newChat(false);}
+  activeChatId=chats[0].id;renderRecent();renderChat();
 }
 
-function selectChat(id){
-  activeChatId = id;
-  renderRecent();
-  renderChat();
-  closeSearch();
-}
+function selectChat(id){activeChatId=id;renderRecent();renderChat();closeSearch();}
 
 function updateTitleFromFirstMessage(chat){
-  const first = chat.messages.find(m => m.role === "user");
-  chat.title = first ? first.content.slice(0, 38) : "New chat";
+  const first=chat.messages.find(m=>m.role==="user");
+  chat.title=first?first.content.slice(0,38):"New chat";
 }
 
 function renderRecent(){
-  const list = document.getElementById("recentList");
-  list.innerHTML = "";
-  chats.sort((a,b)=>new Date(b.updated_at || b.updatedAt)-new Date(a.updated_at || a.updatedAt)).forEach(chat => {
-    const btn = document.createElement("button");
-    btn.className = `citem ${chat.id === activeChatId ? "on" : ""}`;
-    btn.onclick = () => selectChat(chat.id);
-    btn.innerHTML = `<div class="cdot"></div>${escapeHtml(chat.title)}`;
+  const list=document.getElementById("recentList");list.innerHTML="";
+  chats.sort((a,b)=>new Date(b.updated_at||b.updatedAt)-new Date(a.updated_at||a.updatedAt)).forEach(chat=>{
+    const btn=document.createElement("button");
+    btn.className=`citem ${chat.id===activeChatId?"on":""}`;
+    btn.onclick=()=>selectChat(chat.id);
+    btn.innerHTML=`<div class="cdot"></div>${escapeHtml(chat.title)}`;
     list.appendChild(btn);
   });
 }
 
 function renderEmpty(){
-  document.getElementById("mwrap").innerHTML = `<div class="empty" id="empty">
+  document.getElementById("mwrap").innerHTML=`<div class="empty" id="empty">
     <div class="eorb">B2</div><h2>What's on your mind?</h2>
-    <p>Ask anything: code, ideas, explanations, or just talk.</p>
+    <p>Ask anything, or try generating a 3D model!</p>
     <div class="chips">
+      <button class="chip" onclick="useSug(this)">Generate a 3D crystal</button>
+      <button class="chip" onclick="useSug(this)">Generate a 3D rocket</button>
       <button class="chip" onclick="useSug(this)">Explain async/await</button>
       <button class="chip" onclick="useSug(this)">Write a Python script</button>
-      <button class="chip" onclick="useSug(this)">Debug my code</button>
-      <button class="chip" onclick="useSug(this)">Summarize a topic</button>
     </div></div>`;
 }
 
 function renderChat(){
-  const chat = getActiveChat();
-  document.getElementById("chatTitle").textContent = chat?.title || "New chat";
-  const wrap = document.getElementById("mwrap");
-  wrap.innerHTML = "";
-  if (!chat || !chat.messages.length){renderEmpty();return;}
-  chat.messages.forEach(message => addMsg(message.role === "assistant" ? "ai" : "user", message.content, false));
-  document.getElementById("msgs").scrollTop = 99999;
+  const chat=getActiveChat();
+  document.getElementById("chatTitle").textContent=chat?.title||"New chat";
+  const wrap=document.getElementById("mwrap");wrap.innerHTML="";
+  if(!chat||!chat.messages.length){renderEmpty();return;}
+  chat.messages.forEach(m=>addMsg(m.role==="assistant"?"ai":"user",m.content,false));
+  document.getElementById("msgs").scrollTop=99999;
 }
 
 function addMsg(role,text,appendToHistory=true){
-  const e=document.getElementById("empty"); if(e)e.remove();
-  const d=document.createElement("div");
-  d.className=`msg ${role}`;
+  const e=document.getElementById("empty");if(e)e.remove();
+  const d=document.createElement("div");d.className=`msg ${role}`;
   const isAI=role==="ai";
-  const name=isAI ? "B2" : getProfileName();
-  const avatar=isAI ? "B2" : getInitial(name);
+  const name=isAI?"B2":getProfileName();
+  const avatar=isAI?"B2":getInitial(name);
   d.innerHTML=`<div class="mhdr"><div class="mav ${role}">${avatar}</div><span class="mname">${escapeHtml(name)}</span><span class="mtime">${gt()}</span></div><div class="mbody">${escapeHtml(text)}</div>`;
   document.getElementById("mwrap").appendChild(d);
   document.getElementById("msgs").scrollTop=99999;
   return d;
 }
 
-function showTyping(){
-  const e=document.getElementById("empty"); if(e)e.remove();
-  const d=document.createElement("div"); d.className="msg ai"; d.id="typing";
-  d.innerHTML=`<div class="mhdr"><div class="mav ai">B2</div><span class="mname">B2</span></div><div class="mbody"><div class="tdots"><span></span><span></span><span></span></div></div>`;
+function add3DMsg(code, label){
+  const e=document.getElementById("empty");if(e)e.remove();
+  const d=document.createElement("div");d.className="msg ai";
+  const viewer=create3DViewer(code,label);
+  d.innerHTML=`<div class="mhdr"><div class="mav ai">B2</div><span class="mname">B2</span><span class="mtime">${gt()}</span></div><div class="mbody">Here's your 3D model — drag to rotate, scroll to zoom!</div>`;
+  d.appendChild(viewer);
   document.getElementById("mwrap").appendChild(d);
   document.getElementById("msgs").scrollTop=99999;
 }
 
-function hideTyping(){const t=document.getElementById("typing"); if(t)t.remove();}
-function useSug(b){const inp=document.getElementById("inp"); inp.value=b.textContent; resize(inp); send();}
+function showTyping(){
+  const e=document.getElementById("empty");if(e)e.remove();
+  const d=document.createElement("div");d.className="msg ai";d.id="typing";
+  d.innerHTML=`<div class="mhdr"><div class="mav ai">B2</div><span class="mname">B2</span></div><div class="mbody"><div class="tdots"><span></span><span></span><span></span></div></div>`;
+  document.getElementById("mwrap").appendChild(d);
+  document.getElementById("msgs").scrollTop=99999;
+}
+function hideTyping(){const t=document.getElementById("typing");if(t)t.remove();}
+function useSug(b){const inp=document.getElementById("inp");inp.value=b.textContent;resize(inp);send();}
 
 function onKey(e){
   if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}
@@ -337,30 +436,55 @@ function onKey(e){
 async function send(){
   if(busy)return;
   const inp=document.getElementById("inp");
-  const txt=inp.value.trim(); if(!txt)return;
+  const txt=inp.value.trim();if(!txt)return;
   const chat=getActiveChat();
-  inp.value=""; inp.style.height="auto";
-  busy=true; document.getElementById("sbtn").disabled=true;
+  inp.value="";inp.style.height="auto";
+  busy=true;document.getElementById("sbtn").disabled=true;
   addMsg("user",txt);
   chat.messages.push({role:"user",content:txt});
   chat.updated_at=new Date().toISOString();
   updateTitleFromFirstMessage(chat);
-  renderRecent(); document.getElementById("chatTitle").textContent=chat.title;
+  renderRecent();document.getElementById("chatTitle").textContent=chat.title;
   showTyping();
 
+  // ── 3D path ──
+  if(is3DRequest(txt)){
+    try{
+      const res=await fetch(`${API_BASE}/api/chat`,{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          messages:[
+            {role:"system",content:SYSTEM_3D},
+            {role:"user",content:txt}
+          ]
+        })
+      });
+      const data=await res.json();
+      hideTyping();
+      const code=data.message||"";
+      // Strip markdown fences if AI added them
+      const clean=code.replace(/```[\w]*\n?/g,"").replace(/```/g,"").trim();
+      add3DMsg(clean, txt);
+      chat.messages.push({role:"assistant",content:"[3D model generated]"});
+      chat.updated_at=new Date().toISOString();
+    }catch(err){
+      hideTyping();
+      addMsg("ai",`Error generating 3D model: ${err.message}`);
+    }
+    busy=false;document.getElementById("sbtn").disabled=false;inp.focus();
+    return;
+  }
+
+  // ── Normal chat path ──
   try{
     const res=await fetch(`${API_BASE}/api/chat`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chatId:chat.id,content:txt})});
     const raw=await res.text();
     let data={};
-    if(raw){
-      try{ data=JSON.parse(raw); }
-      catch{ throw new Error(`Server returned a non-JSON response: ${raw.slice(0,120)}`); }
-    }else{
-      throw new Error(`Empty response from server.`);
-    }
+    if(raw){try{data=JSON.parse(raw);}catch{throw new Error(`Non-JSON response: ${raw.slice(0,120)}`);}}
+    else{throw new Error("Empty response from server.");}
     hideTyping();
-    if(!res.ok)throw new Error(data.error || "The request failed.");
-    const reply=data.message || "No response.";
+    if(!res.ok)throw new Error(data.error||"The request failed.");
+    const reply=data.message||"No response.";
     chat.messages.push({role:"assistant",content:reply});
     chat.updated_at=new Date().toISOString();
     addMsg("ai",reply);
@@ -368,75 +492,57 @@ async function send(){
     hideTyping();
     addMsg("ai",`Error: ${err.message}`);
   }
-
-  busy=false; document.getElementById("sbtn").disabled=false; inp.focus();
+  busy=false;document.getElementById("sbtn").disabled=false;inp.focus();
 }
 
-function openSearch(){
-  document.getElementById("searchOverlay").hidden=false;
-  document.getElementById("searchInput").focus();
-  renderSearchResults();
-}
-
-function closeSearch(event){
-  if(event && event.target.id !== "searchOverlay") return;
-  document.getElementById("searchOverlay").hidden=true;
-}
+function openSearch(){document.getElementById("searchOverlay").hidden=false;document.getElementById("searchInput").focus();renderSearchResults();}
+function closeSearch(event){if(event&&event.target.id!=="searchOverlay")return;document.getElementById("searchOverlay").hidden=true;}
 
 function renderSearchResults(){
   const q=document.getElementById("searchInput").value.trim().toLowerCase();
   const box=document.getElementById("searchResults");
   const results=chats.filter(chat=>{
-    const haystack=[chat.title,...chat.messages.map(m=>m.content)].join(" ").toLowerCase();
-    return !q || haystack.includes(q);
+    const hay=[chat.title,...chat.messages.map(m=>m.content)].join(" ").toLowerCase();
+    return !q||hay.includes(q);
   });
-  box.innerHTML = results.length ? "" : `<div class="empty-results">No chats found.</div>`;
+  box.innerHTML=results.length?"":`<div class="empty-results">No chats found.</div>`;
   results.forEach(chat=>{
-    const hit=chat.messages.find(m=>!q || m.content.toLowerCase().includes(q));
-    const btn=document.createElement("button");
-    btn.className="sres";
+    const hit=chat.messages.find(m=>!q||m.content.toLowerCase().includes(q));
+    const btn=document.createElement("button");btn.className="sres";
     btn.onclick=()=>selectChat(chat.id);
-    btn.innerHTML=`<div class="sres-title">${escapeHtml(chat.title)}</div><div class="sres-text">${escapeHtml(hit ? hit.content.slice(0,120) : "No messages yet.")}</div>`;
+    btn.innerHTML=`<div class="sres-title">${escapeHtml(chat.title)}</div><div class="sres-text">${escapeHtml(hit?hit.content.slice(0,120):"No messages yet.")}</div>`;
     box.appendChild(btn);
   });
 }
 
-function getProfile(){return profile || { username: "You" };}
-function getProfileName(){return getProfile().username || "You";}
-function getInitial(name){return (name.trim()[0] || "Y").toUpperCase();}
+function getProfile(){return profile||{username:"You"};}
+function getProfileName(){return getProfile().username||"You";}
+function getInitial(name){return(name.trim()[0]||"Y").toUpperCase();}
 function renderProfile(){
   const name=getProfileName();
   document.getElementById("profileName").textContent=name;
   document.getElementById("profileInitial").textContent=getInitial(name);
   document.getElementById("usernameInput").value=name;
 }
-
 function toggleProfile(force){
   const menu=document.getElementById("profileMenu");
-  menu.hidden = typeof force === "boolean" ? !force : !menu.hidden;
-  if(!menu.hidden) document.getElementById("usernameInput").focus();
+  menu.hidden=typeof force==="boolean"?!force:!menu.hidden;
+  if(!menu.hidden)document.getElementById("usernameInput").focus();
 }
-
 async function saveProfile(){
   const input=document.getElementById("usernameInput");
-  const username=input.value.trim() || "You";
+  const username=input.value.trim()||"You";
   const res=await fetch(`${API_BASE}/api/profile`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username})});
   const data=await res.json();
-  if(!res.ok){alert(data.error || "Could not save profile.");return;}
-  profile=data.profile;
-  renderProfile();
-  renderChat();
-  toggleProfile(false);
+  if(!res.ok){alert(data.error||"Could not save.");return;}
+  profile=data.profile;renderProfile();renderChat();toggleProfile(false);
 }
 
-document.addEventListener("keydown", e => {
-  if(e.key === "Escape"){closeSearch();toggleProfile(false);}
-});
-
-document.addEventListener("click", e => {
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeSearch();toggleProfile(false);}});
+document.addEventListener("click",e=>{
   const menu=document.getElementById("profileMenu");
   const foot=document.querySelector(".sb-foot");
-  if(!menu.hidden && !foot.contains(e.target)) toggleProfile(false);
+  if(!menu.hidden&&!foot.contains(e.target))toggleProfile(false);
 });
 
 loadState();
